@@ -46,17 +46,8 @@
 	- MySQLWorkbench를 통해 접속 테스트
 	- `mysql -h <rds-endpoint> -P <port> -u <username>`
 	- 접속 잘 된다면 정상적으로 생성되고 접속을 확인함
-### 2. .jar 파일 생성
-- 기존 소스코드에서 데이터베이스 URL을 RDS Endpoint 주소로 고치기
-- `gradlew build` 로 빌드
-- 빌드된 파일명과 절대경로 적어두기
 
-### 3.  EC2에 .jar 파일 보내기
-- 터미널에서 .pem키가 있는 곳(ec2 접속키, 보통 Downloads에 있음)로 이동
-- `chmod 400 <.pem>` : 접속키 권한 변경, 이미 했다면 안해도 됨
-- `scp -i <sshkey.pem> <빌드한 .jar 파일 경로> ec2-user@<생성한 인스턴스 퍼블릭 IP>:~/test.jar` : 방금 빌드한 jar 파일을 EC2 서버로 전송
-
-### 4. EC2에 접속하고 도커 설치
+### 2. EC2에 접속하고 도커 설치
 1. EC2 접속
 	- `ssh -i <sshkey.pem> ec2-user@<생성한 인스턴스 퍼블릭 IP>`
 2. Docker 설치
@@ -67,16 +58,34 @@
 	- `sudo systemctl enable docker`
 	- `sudo yum install git -y`
 	- `sudo docker` 를 쳤을때 이것저것 나오면 정상
+3. 도커 파일 작성 및 내용 수정하기
+   	- ` FROM openjdk:21-jdk-slim AS build` : 자바 버젼 다르다면 바꾸기
+   	- `RUN git clone -b dev https://github.com/KTB-FarmMate/FramMate-API-Server` :  해당하는 깃허브 링크 및 브랜치로 바꾸기
+   	- .env 파일로 환경 변수 작성 
+	```
+   	  	ARG MYSQL_HOST
+		ARG MYSQL_PORT
+		ARG DB_NAME
+		ARG MYSQL_USERNAME
+		ARG MYSQL_PASSWORD
+		
+		ENV MYSQL_HOST=${MYSQL_HOST}
+		ENV MYSQL_PORT=${MYSQL_PORT}
+		ENV DB_NAME=${DB_NAME}
+		ENV MYSQL_USERNAME=${MYSQL_USERNAME}
+		ENV MYSQL_PASSWORD=${MYSQL_PASSWORD}
+   	  ``` 
 3. 도커 파일 생성하기
 	- `sudo vi Dockerfile` 하고 깃허브 Dockerfile 내용 참고
 4. 도커 이미지 빌드하기
 ```
 folder
 ├── Dockerfile
-└── test.jar
+├── github 클론 폴더
+└── .env
 ```
 이 형태에서 시작
-- `sudo docker build -t <이미지명>:<태그명> .`
+- `sudo docker build --env-file .env -t <이미지명>:<태그명> .`
 - 이미지 빌드가 다 되었다면 `sudo docker images` 로 생성한 이미지를 확인
 5. 도커 컨테이너 실행하기
 	- `sudo docker run -d -p 8080:8080 --name <원하는 컨테이너명> <이미지명>:<태그명>`
